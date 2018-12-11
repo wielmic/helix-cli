@@ -543,6 +543,7 @@ sub vcl_recv {
 
 sub hlx_fetch_errors {
   set req.http.X-Trace = req.http.X-Trace + "; hlx_fetch_errors";
+  call hlx_log;
   # Interpreting OpenWhisk errors is a bit tricky, because we don't have access to the JSON
   # of the response body. Instead we are using the Content-Length of known error messages
   # to determine the most likely root cause. Each root cause will get an internal status code
@@ -786,7 +787,7 @@ sub vcl_pass {
 #FASTLY pass
   set req.http.X-Trace = req.http.X-Trace + "; vcl_pass";
   call hlx_log;
-  
+
   # set backend host
   if (req.backend == F_AdobeRuntime) {
     set bereq.http.host = "adobeioruntime.net";
@@ -804,16 +805,25 @@ sub vcl_pass {
 
 include "json_generate.vcl";
 
+sub hlx_log {
+
+}
+
 /**
  * A custom log function that sends logs straight to Azure.
  */
-sub hlx_log {
+sub hlx_log2 {
   call json_generate_reset;
   call json_generate_begin_object;
 
-  set req.http.value = "client.ip";
+  set req.http.value = "client.ip.hashed";
   call json_generate_string;
-  set req.http.value = client.ip;
+  set req.http.value = digest.hash_sha1(client.ip);
+  call json_generate_string;
+
+  set req.http.value = "client.ip.masked";
+  call json_generate_string;
+  set req.http.value = regsub(client.ip, "(([\d]+\.)+)([\d]+)", "\1xxx");
   call json_generate_string;
 
   set req.http.value = "req.request";
@@ -876,6 +886,387 @@ sub hlx_log {
   set req.http.value = time.elapsed.usec;
   call json_generate_number;
 
+
+
+  set req.http.value = "client.as.name";
+  call json_generate_string;
+  set req.http.value = client.as.name;
+  call json_generate_string;
+
+
+  set req.http.value = "client.geo.city";
+  call json_generate_string;
+  set req.http.value = client.geo.city;
+  call json_generate_string;
+
+
+  set req.http.value = "client.geo.conn_speed";
+  call json_generate_string;
+  set req.http.value = client.geo.conn_speed;
+  call json_generate_string;
+
+
+  set req.http.value = "client.geo.continent_code";
+  call json_generate_string;
+  set req.http.value = client.geo.continent_code;
+  call json_generate_string;
+
+
+  set req.http.value = "client.geo.country_code";
+  call json_generate_string;
+  set req.http.value = client.geo.country_code;
+  call json_generate_string;
+
+
+  set req.http.value = "client.geo.gmt_offset";
+  call json_generate_string;
+  set req.http.value = client.geo.gmt_offset;
+  call json_generate_string;
+
+
+  set req.http.value = "client.geo.latitude";
+  call json_generate_string;
+  set req.http.value = client.geo.latitude;
+  call json_generate_string;
+
+
+  set req.http.value = "client.geo.longitude";
+  call json_generate_string;
+  set req.http.value = client.geo.longitude;
+  call json_generate_string;
+
+
+  set req.http.value = "client.geo.metro_code";
+  call json_generate_string;
+  set req.http.value = client.geo.metro_code;
+  call json_generate_string;
+
+
+  set req.http.value = "client.geo.postal_code";
+  call json_generate_string;
+  set req.http.value = client.geo.postal_code;
+  call json_generate_string;
+
+
+  set req.http.value = "client.geo.region";
+  call json_generate_string;
+  set req.http.value = client.geo.region;
+  call json_generate_string;
+
+
+  set req.http.value = "client.requests";
+  call json_generate_string;
+  set req.http.value = client.requests;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.Accept";
+  call json_generate_string;
+  set req.http.value = req.http.Accept;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.Accept-Charset";
+  call json_generate_string;
+  set req.http.value = req.http.Accept-Charset;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.Accept-Encoding";
+  call json_generate_string;
+  set req.http.value = req.http.Accept-Encoding;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.Accept-Encoding";
+  call json_generate_string;
+  set req.http.value = req.http.Accept-Encoding;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.Accept-Encoding";
+  call json_generate_string;
+  set req.http.value = req.http.Accept-Encoding;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.Accept-Language";
+  call json_generate_string;
+  set req.http.value = req.http.Accept-Language;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.Fastly-FF";
+  call json_generate_string;
+  set req.http.value = req.http.Fastly-FF;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.Fastly-SSL";
+  call json_generate_string;
+  set req.http.value = req.http.Fastly-SSL;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.Referer";
+  call json_generate_string;
+  set req.http.value = req.http.Referer;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.User-Agent";
+  call json_generate_string;
+  set req.http.value = req.http.User-Agent;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.Viewport-Width";
+  call json_generate_string;
+  set req.http.value = req.http.Viewport-Width;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Action-Root";
+  call json_generate_string;
+  set req.http.value = req.http.X-Action-Root;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Allow";
+  call json_generate_string;
+  set req.http.value = req.http.X-Allow;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Backend-Name";
+  call json_generate_string;
+  set req.http.value = req.http.X-Backend-Name;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-CDN-Request-ID";
+  call json_generate_string;
+  set req.http.value = req.http.X-CDN-Request-ID;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Debug";
+  call json_generate_string;
+  set req.http.value = req.http.X-Debug;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Deny";
+  call json_generate_string;
+  set req.http.value = req.http.X-Deny;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Dirname";
+  call json_generate_string;
+  set req.http.value = req.http.X-Dirname;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Embed";
+  call json_generate_string;
+  set req.http.value = req.http.X-Embed;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Encoded-Params";
+  call json_generate_string;
+  set req.http.value = req.http.X-Encoded-Params;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-ESI";
+  call json_generate_string;
+  set req.http.value = req.http.X-ESI;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-GitHub-Static-Owner";
+  call json_generate_string;
+  set req.http.value = req.http.X-GitHub-Static-Owner;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-GitHub-Static-Ref";
+  call json_generate_string;
+  set req.http.value = req.http.X-GitHub-Static-Ref;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-GitHub-Static-Repo";
+  call json_generate_string;
+  set req.http.value = req.http.X-GitHub-Static-Repo;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Host";
+  call json_generate_string;
+  set req.http.value = req.http.X-Host;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Index";
+  call json_generate_string;
+  set req.http.value = req.http.X-Index;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Orig-host";
+  call json_generate_string;
+  set req.http.value = req.http.X-Orig-host;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Orig-URL";
+  call json_generate_string;
+  set req.http.value = req.http.X-Orig-URL;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Owner";
+  call json_generate_string;
+  set req.http.value = req.http.X-Owner;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Ref";
+  call json_generate_string;
+  set req.http.value = req.http.X-Ref;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Repo";
+  call json_generate_string;
+  set req.http.value = req.http.X-Repo;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Static";
+  call json_generate_string;
+  set req.http.value = req.http.X-Static;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Strain";
+  call json_generate_string;
+  set req.http.value = req.http.X-Strain;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-Trace";
+  call json_generate_string;
+  set req.http.value = req.http.X-Trace;
+  call json_generate_string;
+
+
+  set req.http.value = "req.http.X-URL";
+  call json_generate_string;
+  set req.http.value = req.http.X-URL;
+  call json_generate_string;
+
+
+  set req.http.value = "req.restarts";
+  call json_generate_string;
+  set req.http.value = req.restarts;
+  call json_generate_string;
+
+
+  set req.http.value = "req.topurl";
+  call json_generate_string;
+  set req.http.value = req.topurl;
+  call json_generate_string;
+
+
+  set req.http.value = "req.url.qs";
+  call json_generate_string;
+  set req.http.value = req.url.qs;
+  call json_generate_string;
+
+
+  set req.http.value = "resp.http.Content-Type";
+  call json_generate_string;
+  set req.http.value = resp.http.Content-Type;
+  call json_generate_string;
+
+
+  set req.http.value = "resp.http.Via";
+  call json_generate_string;
+  set req.http.value = resp.http.Via;
+  call json_generate_string;
+
+
+  set req.http.value = "resp.http.X-Cache-Hits";
+  call json_generate_string;
+  set req.http.value = resp.http.X-Cache-Hits;
+  call json_generate_string;
+
+
+  set req.http.value = "resp.http.X-Content-Type";
+  call json_generate_string;
+  set req.http.value = resp.http.X-Content-Type;
+  call json_generate_string;
+
+
+  set req.http.value = "resp.http.X-Fastly-Request-Id";
+  call json_generate_string;
+  set req.http.value = resp.http.X-Fastly-Request-Id;
+  call json_generate_string;
+
+
+  set req.http.value = "resp.http.X-GitHub-Request-Id";
+  call json_generate_string;
+  set req.http.value = resp.http.X-GitHub-Request-Id;
+  call json_generate_string;
+
+
+  set req.http.value = "resp.http.X-GW-Cache";
+  call json_generate_string;
+  set req.http.value = resp.http.X-GW-Cache;
+  call json_generate_string;
+
+
+  set req.http.value = "resp.http.X-host";
+  call json_generate_string;
+  set req.http.value = resp.http.X-host;
+  call json_generate_string;
+
+
+  set req.http.value = "resp.http.x-openwhisk-activation-id";
+  call json_generate_string;
+  set req.http.value = resp.http.x-openwhisk-activation-id;
+  call json_generate_string;
+
+
+  set req.http.value = "resp.http.X-Request-Id";
+  call json_generate_string;
+  set req.http.value = resp.http.X-Request-Id;
+  call json_generate_string;
+
+
+  set req.http.value = "resp.http.X-Version";
+  call json_generate_string;
+  set req.http.value = resp.http.X-Version;
+  call json_generate_string;
+
+
+  set req.http.value = "server.datacenter";
+  call json_generate_string;
+  set req.http.value = server.datacenter;
+  call json_generate_string;
+
+
+  set req.http.value = "server.region";
+  call json_generate_string;
+  set req.http.value = server.region;
+  call json_generate_string;
+
+
+
   call json_generate_end_object;
 
   log {"syslog 3l2MjGcHgWw5NUJz7OKYH3 Azure Test :: "} req.http.json_generate_json;
@@ -884,5 +1275,5 @@ sub hlx_log {
 sub vcl_log {
 #FASTLY log
 
-  call hlx_log;
+  call hlx_log2;
 }

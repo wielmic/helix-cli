@@ -478,6 +478,7 @@ sub vcl_recv {
   } else {
     set req.http.X-Trace = "vcl_recv";
   }
+  call hlx_log;
 
   call hlx_headers_recv;
   call hlx_backend_recv;
@@ -603,6 +604,7 @@ sub hlx_error_errors {
 sub vcl_fetch {
 #FASTLY fetch
   set req.http.X-Trace = req.http.X-Trace + "; vcl_fetch";
+  call hlx_log;
 
   call hlx_fetch_errors;
   call hlx_headers_fetch;
@@ -687,6 +689,7 @@ sub vcl_fetch {
 sub vcl_hit {
 #FASTLY hit
   set req.http.X-Trace = req.http.X-Trace + "; vcl_hit";
+  call hlx_log;
 
   if (!obj.cacheable) {
     return(pass);
@@ -697,6 +700,8 @@ sub vcl_hit {
 sub vcl_miss {
 #FASTLY miss
   set req.http.X-Trace = req.http.X-Trace + "; vcl_miss";
+  call hlx_log;
+
   unset bereq.http.X-Orig-Url;
   if (req.backend.is_shield) {
     set bereq.url = req.http.X-Orig-Url;
@@ -726,6 +731,8 @@ sub vcl_deliver {
 #FASTLY deliver
 
   set req.http.X-Trace = req.http.X-Trace + "; vcl_deliver";
+  call hlx_log;
+
   call hlx_headers_deliver;
 
   # only set the strain cookie for sticky strains
@@ -770,12 +777,16 @@ sub vcl_deliver {
 sub vcl_error {
 #FASTLY error
   set req.http.X-Trace = req.http.X-Trace + "; vcl_error";
+  call hlx_log;
+
   call hlx_error_errors;
 }
 
 sub vcl_pass {
 #FASTLY pass
   set req.http.X-Trace = req.http.X-Trace + "; vcl_pass";
+  call hlx_log;
+  
   # set backend host
   if (req.backend == F_AdobeRuntime) {
     set bereq.http.host = "adobeioruntime.net";
@@ -790,6 +801,88 @@ sub vcl_pass {
 
 }
 
+
+include "json_generate.vcl";
+
+/**
+ * A custom log function that sends logs straight to Azure.
+ */
+sub hlx_log {
+  call json_generate_reset;
+  call json_generate_begin_object;
+
+  set req.http.value = "client.ip";
+  call json_generate_string;
+  set req.http.value = client.ip;
+  call json_generate_string;
+
+  set req.http.value = "req.request";
+  call json_generate_string;
+  set req.http.value = req.request;
+  call json_generate_string;
+
+  set req.http.value = "req.http.host";
+  call json_generate_string;
+  set req.http.value = req.http.host;
+  call json_generate_string;
+
+  set req.http.value = "req.url";
+  call json_generate_string;
+  set req.http.value = req.url;
+  call json_generate_string;
+
+  set req.http.value = "req.bytes_read";
+  call json_generate_string;
+  set req.http.value = req.bytes_read;
+  call json_generate_number;
+
+  set req.http.value = "resp.status";
+  call json_generate_string;
+  set req.http.value = resp.status;
+  call json_generate_number;
+
+  set req.http.value = "resp.bytes_written";
+  call json_generate_string;
+  set req.http.value = resp.bytes_written;
+  call json_generate_number;
+
+  set req.http.value = "resp.http.X-Cache";
+  call json_generate_string;
+  set req.http.value = resp.http.X-Cache;
+  call json_generate_string;
+
+  set req.http.value = "fastly_info.state";
+  call json_generate_string;
+  set req.http.value = fastly_info.state;
+  call json_generate_string;
+
+  set req.http.value = "time.start.usec";
+  call json_generate_string;
+  set req.http.value = time.start.usec;
+  call json_generate_number;
+
+  set req.http.value = "time.start.iso8601";
+  call json_generate_string;
+  set req.http.value = strftime("%25F %25T", time.start);
+  call json_generate_string;
+
+  set req.http.value = "time.end.usec";
+  call json_generate_string;
+  set req.http.value = time.end.usec;
+  call json_generate_number;
+
+  set req.http.value = "time.elapsed.usec";
+  call json_generate_string;
+  set req.http.value = time.elapsed.usec;
+  call json_generate_number;
+
+  call json_generate_end_object;
+
+  log {"syslog 3l2MjGcHgWw5NUJz7OKYH3 Azure Test :: "} req.http.json_generate_json;
+}
+
 sub vcl_log {
 #FASTLY log
+
+  call hlx_log;
 }

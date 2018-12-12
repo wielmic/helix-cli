@@ -478,7 +478,6 @@ sub vcl_recv {
   } else {
     set req.http.X-Trace = "vcl_recv";
   }
-  call hlx_log;
 
   call hlx_headers_recv;
   call hlx_backend_recv;
@@ -510,6 +509,10 @@ sub vcl_recv {
 
   # Determine the current strain and execute strain-specific code
   call hlx_strain;
+
+  # Log
+
+  call hlx_log_recv_json;
 
   # block bad requests – needs current strain and unchanged req.url
   call hlx_block_recv;
@@ -543,7 +546,6 @@ sub vcl_recv {
 
 sub hlx_fetch_errors {
   set req.http.X-Trace = req.http.X-Trace + "; hlx_fetch_errors";
-  call hlx_log;
   # Interpreting OpenWhisk errors is a bit tricky, because we don't have access to the JSON
   # of the response body. Instead we are using the Content-Length of known error messages
   # to determine the most likely root cause. Each root cause will get an internal status code
@@ -605,7 +607,6 @@ sub hlx_error_errors {
 sub vcl_fetch {
 #FASTLY fetch
   set req.http.X-Trace = req.http.X-Trace + "; vcl_fetch";
-  call hlx_log;
 
   call hlx_fetch_errors;
   call hlx_headers_fetch;
@@ -690,7 +691,6 @@ sub vcl_fetch {
 sub vcl_hit {
 #FASTLY hit
   set req.http.X-Trace = req.http.X-Trace + "; vcl_hit";
-  call hlx_log;
 
   if (!obj.cacheable) {
     return(pass);
@@ -701,7 +701,6 @@ sub vcl_hit {
 sub vcl_miss {
 #FASTLY miss
   set req.http.X-Trace = req.http.X-Trace + "; vcl_miss";
-  call hlx_log;
 
   unset bereq.http.X-Orig-Url;
   if (req.backend.is_shield) {
@@ -732,7 +731,6 @@ sub vcl_deliver {
 #FASTLY deliver
 
   set req.http.X-Trace = req.http.X-Trace + "; vcl_deliver";
-  call hlx_log;
 
   call hlx_headers_deliver;
 
@@ -741,6 +739,9 @@ sub vcl_deliver {
   if (req.http.X-Strain&&req.http.X-Sticky=="true"&&req.backend == F_AdobeRuntime) {
     set resp.http.Set-Cookie = "X-Strain=" + req.http.X-Strain + "; Secure; HttpOnly; SameSite=Strict;";
   }
+
+  # log what we are delivering
+  call hlx_log_deliver_json;
 
   if (!req.http.X-Debug) {
     # Unless we are debugging, shut up chatty headers
@@ -778,7 +779,6 @@ sub vcl_deliver {
 sub vcl_error {
 #FASTLY error
   set req.http.X-Trace = req.http.X-Trace + "; vcl_error";
-  call hlx_log;
 
   call hlx_error_errors;
 }
@@ -786,7 +786,6 @@ sub vcl_error {
 sub vcl_pass {
 #FASTLY pass
   set req.http.X-Trace = req.http.X-Trace + "; vcl_pass";
-  call hlx_log;
 
   # set backend host
   if (req.backend == F_AdobeRuntime) {
@@ -802,478 +801,150 @@ sub vcl_pass {
 
 }
 
-
-include "json_generate.vcl";
-
 sub hlx_log {
 
 }
 
-/**
- * A custom log function that sends logs straight to Azure.
- */
-sub hlx_log2 {
-  call json_generate_reset;
-  call json_generate_begin_object;
 
-  set req.http.value = "client.ip.hashed";
-  call json_generate_string;
-  set req.http.value = digest.hash_sha1(client.ip);
-  call json_generate_string;
-
-  set req.http.value = "client.ip.masked";
-  call json_generate_string;
-  set req.http.value = regsub(client.ip, "(([\d]+\.)+)([\d]+)", "\1xxx");
-  call json_generate_string;
-
-  set req.http.value = "req.request";
-  call json_generate_string;
-  set req.http.value = req.request;
-  call json_generate_string;
-
-  set req.http.value = "req.http.host";
-  call json_generate_string;
-  set req.http.value = req.http.host;
-  call json_generate_string;
-
-  set req.http.value = "req.url";
-  call json_generate_string;
-  set req.http.value = req.url;
-  call json_generate_string;
-
-  set req.http.value = "req.bytes_read";
-  call json_generate_string;
-  set req.http.value = req.bytes_read;
-  call json_generate_number;
-
-  set req.http.value = "resp.status";
-  call json_generate_string;
-  set req.http.value = resp.status;
-  call json_generate_number;
-
-  set req.http.value = "resp.bytes_written";
-  call json_generate_string;
-  set req.http.value = resp.bytes_written;
-  call json_generate_number;
-
-  set req.http.value = "resp.http.X-Cache";
-  call json_generate_string;
-  set req.http.value = resp.http.X-Cache;
-  call json_generate_string;
-
-  set req.http.value = "fastly_info.state";
-  call json_generate_string;
-  set req.http.value = fastly_info.state;
-  call json_generate_string;
-
-  set req.http.value = "time.start.usec";
-  call json_generate_string;
-  set req.http.value = time.start.usec;
-  call json_generate_number;
-
-  set req.http.value = "time.start.iso8601";
-  call json_generate_string;
-  set req.http.value = strftime("%25F %25T", time.start);
-  call json_generate_string;
-
-  set req.http.value = "time.end.usec";
-  call json_generate_string;
-  set req.http.value = time.end.usec;
-  call json_generate_number;
-
-  set req.http.value = "time.elapsed.usec";
-  call json_generate_string;
-  set req.http.value = time.elapsed.usec;
-  call json_generate_number;
-
-
-
-  set req.http.value = "client.as.name";
-  call json_generate_string;
-  set req.http.value = client.as.name;
-  call json_generate_string;
-
-
-  set req.http.value = "client.geo.city";
-  call json_generate_string;
-  set req.http.value = client.geo.city;
-  call json_generate_string;
-
-
-  set req.http.value = "client.geo.conn_speed";
-  call json_generate_string;
-  set req.http.value = client.geo.conn_speed;
-  call json_generate_string;
-
-
-  set req.http.value = "client.geo.continent_code";
-  call json_generate_string;
-  set req.http.value = client.geo.continent_code;
-  call json_generate_string;
-
-
-  set req.http.value = "client.geo.country_code";
-  call json_generate_string;
-  set req.http.value = client.geo.country_code;
-  call json_generate_string;
-
-
-  set req.http.value = "client.geo.gmt_offset";
-  call json_generate_string;
-  set req.http.value = client.geo.gmt_offset;
-  call json_generate_string;
-
-
-  set req.http.value = "client.geo.latitude";
-  call json_generate_string;
-  set req.http.value = client.geo.latitude;
-  call json_generate_string;
-
-
-  set req.http.value = "client.geo.longitude";
-  call json_generate_string;
-  set req.http.value = client.geo.longitude;
-  call json_generate_string;
-
-
-  set req.http.value = "client.geo.metro_code";
-  call json_generate_string;
-  set req.http.value = client.geo.metro_code;
-  call json_generate_string;
-
-
-  set req.http.value = "client.geo.postal_code";
-  call json_generate_string;
-  set req.http.value = client.geo.postal_code;
-  call json_generate_string;
-
-
-  set req.http.value = "client.geo.region";
-  call json_generate_string;
-  set req.http.value = client.geo.region;
-  call json_generate_string;
-
-
-  set req.http.value = "client.requests";
-  call json_generate_string;
-  set req.http.value = client.requests;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.Accept";
-  call json_generate_string;
-  set req.http.value = req.http.Accept;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.Accept-Charset";
-  call json_generate_string;
-  set req.http.value = req.http.Accept-Charset;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.Accept-Encoding";
-  call json_generate_string;
-  set req.http.value = req.http.Accept-Encoding;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.Accept-Encoding";
-  call json_generate_string;
-  set req.http.value = req.http.Accept-Encoding;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.Accept-Encoding";
-  call json_generate_string;
-  set req.http.value = req.http.Accept-Encoding;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.Accept-Language";
-  call json_generate_string;
-  set req.http.value = req.http.Accept-Language;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.Fastly-FF";
-  call json_generate_string;
-  set req.http.value = req.http.Fastly-FF;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.Fastly-SSL";
-  call json_generate_string;
-  set req.http.value = req.http.Fastly-SSL;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.Referer";
-  call json_generate_string;
-  set req.http.value = req.http.Referer;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.User-Agent";
-  call json_generate_string;
-  set req.http.value = req.http.User-Agent;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.Viewport-Width";
-  call json_generate_string;
-  set req.http.value = req.http.Viewport-Width;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Action-Root";
-  call json_generate_string;
-  set req.http.value = req.http.X-Action-Root;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Allow";
-  call json_generate_string;
-  set req.http.value = req.http.X-Allow;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Backend-Name";
-  call json_generate_string;
-  set req.http.value = req.http.X-Backend-Name;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-CDN-Request-ID";
-  call json_generate_string;
-  set req.http.value = req.http.X-CDN-Request-ID;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Debug";
-  call json_generate_string;
-  set req.http.value = req.http.X-Debug;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Deny";
-  call json_generate_string;
-  set req.http.value = req.http.X-Deny;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Dirname";
-  call json_generate_string;
-  set req.http.value = req.http.X-Dirname;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Embed";
-  call json_generate_string;
-  set req.http.value = req.http.X-Embed;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Encoded-Params";
-  call json_generate_string;
-  set req.http.value = req.http.X-Encoded-Params;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-ESI";
-  call json_generate_string;
-  set req.http.value = req.http.X-ESI;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-GitHub-Static-Owner";
-  call json_generate_string;
-  set req.http.value = req.http.X-GitHub-Static-Owner;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-GitHub-Static-Ref";
-  call json_generate_string;
-  set req.http.value = req.http.X-GitHub-Static-Ref;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-GitHub-Static-Repo";
-  call json_generate_string;
-  set req.http.value = req.http.X-GitHub-Static-Repo;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Host";
-  call json_generate_string;
-  set req.http.value = req.http.X-Host;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Index";
-  call json_generate_string;
-  set req.http.value = req.http.X-Index;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Orig-host";
-  call json_generate_string;
-  set req.http.value = req.http.X-Orig-host;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Orig-URL";
-  call json_generate_string;
-  set req.http.value = req.http.X-Orig-URL;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Owner";
-  call json_generate_string;
-  set req.http.value = req.http.X-Owner;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Ref";
-  call json_generate_string;
-  set req.http.value = req.http.X-Ref;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Repo";
-  call json_generate_string;
-  set req.http.value = req.http.X-Repo;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Static";
-  call json_generate_string;
-  set req.http.value = req.http.X-Static;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Strain";
-  call json_generate_string;
-  set req.http.value = req.http.X-Strain;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-Trace";
-  call json_generate_string;
-  set req.http.value = req.http.X-Trace;
-  call json_generate_string;
-
-
-  set req.http.value = "req.http.X-URL";
-  call json_generate_string;
-  set req.http.value = req.http.X-URL;
-  call json_generate_string;
-
-
-  set req.http.value = "req.restarts";
-  call json_generate_string;
-  set req.http.value = req.restarts;
-  call json_generate_string;
-
-
-  set req.http.value = "req.topurl";
-  call json_generate_string;
-  set req.http.value = req.topurl;
-  call json_generate_string;
-
-
-  set req.http.value = "req.url.qs";
-  call json_generate_string;
-  set req.http.value = req.url.qs;
-  call json_generate_string;
-
-
-  set req.http.value = "resp.http.Content-Type";
-  call json_generate_string;
-  set req.http.value = resp.http.Content-Type;
-  call json_generate_string;
-
-
-  set req.http.value = "resp.http.Via";
-  call json_generate_string;
-  set req.http.value = resp.http.Via;
-  call json_generate_string;
-
-
-  set req.http.value = "resp.http.X-Cache-Hits";
-  call json_generate_string;
-  set req.http.value = resp.http.X-Cache-Hits;
-  call json_generate_string;
-
-
-  set req.http.value = "resp.http.X-Content-Type";
-  call json_generate_string;
-  set req.http.value = resp.http.X-Content-Type;
-  call json_generate_string;
-
-
-  set req.http.value = "resp.http.X-Fastly-Request-Id";
-  call json_generate_string;
-  set req.http.value = resp.http.X-Fastly-Request-Id;
-  call json_generate_string;
-
-
-  set req.http.value = "resp.http.X-GitHub-Request-Id";
-  call json_generate_string;
-  set req.http.value = resp.http.X-GitHub-Request-Id;
-  call json_generate_string;
-
-
-  set req.http.value = "resp.http.X-GW-Cache";
-  call json_generate_string;
-  set req.http.value = resp.http.X-GW-Cache;
-  call json_generate_string;
-
-
-  set req.http.value = "resp.http.X-host";
-  call json_generate_string;
-  set req.http.value = resp.http.X-host;
-  call json_generate_string;
-
-
-  set req.http.value = "resp.http.x-openwhisk-activation-id";
-  call json_generate_string;
-  set req.http.value = resp.http.x-openwhisk-activation-id;
-  call json_generate_string;
-
-
-  set req.http.value = "resp.http.X-Request-Id";
-  call json_generate_string;
-  set req.http.value = resp.http.X-Request-Id;
-  call json_generate_string;
-
-
-  set req.http.value = "resp.http.X-Version";
-  call json_generate_string;
-  set req.http.value = resp.http.X-Version;
-  call json_generate_string;
-
-
-  set req.http.value = "server.datacenter";
-  call json_generate_string;
-  set req.http.value = server.datacenter;
-  call json_generate_string;
-
-
-  set req.http.value = "server.region";
-  call json_generate_string;
-  set req.http.value = server.region;
-  call json_generate_string;
-
-
-
-  call json_generate_end_object;
-
-  log {"syslog 3l2MjGcHgWw5NUJz7OKYH3 Azure Test :: "} req.http.json_generate_json;
+sub hlx_log_deliver_json {
+  log {"syslog 3l2MjGcHgWw5NUJz7OKYH3 Azure Test :: "} "{" 
+    + "%22client.as.name%22: %22" + json.escape(client.as.name) + "%22, "
+    + "%22client.geo.city%22: %22" + json.escape(client.geo.city) + "%22, "
+    + "%22client.geo.conn_speed%22: %22" + json.escape(client.geo.conn_speed) + "%22, "
+    + "%22client.geo.continent_code%22: %22" + json.escape(client.geo.continent_code) + "%22, "
+    + "%22client.geo.country_code%22: %22" + json.escape(client.geo.country_code) + "%22, "
+    + "%22client.geo.gmt_offset%22: %22" + json.escape(client.geo.gmt_offset) + "%22, "
+    + "%22client.geo.latitude%22: %22" + json.escape(client.geo.latitude) + "%22, "
+    + "%22client.geo.longitude%22: %22" + json.escape(client.geo.longitude) + "%22, "
+    + "%22client.geo.metro_code%22: %22" + json.escape(client.geo.metro_code) + "%22, "
+    + "%22client.geo.postal_code%22: %22" + json.escape(client.geo.postal_code) + "%22, "
+    + "%22client.geo.region%22: %22" + json.escape(client.geo.region) + "%22, "
+    + "%22client.ip.hashed%22: %22" + json.escape(digest.hash_sha1(client.ip)) + "%22, "
+    + "%22client.ip.masked%22: %22" + json.escape(regsub(client.ip, "(([\d]+\.)+)([\d]+)", "\1xxx")) + "%22, "
+    + "%22client.requests%22: %22" + json.escape(client.requests) + "%22, "
+    + "%22deliver%22: %22" + json.escape("deliver") + "%22, "
+    + "%22fastly_info.state%22: %22" + json.escape(fastly_info.state) + "%22, "
+    + "%22req.bytes_read%22: %22" + json.escape(req.bytes_read) + "%22, "
+    + "%22req.http.Accept-Charset%22: %22" + json.escape(req.http.Accept-Charset) + "%22, "
+    + "%22req.http.Accept-Encoding%22: %22" + json.escape(req.http.Accept-Encoding) + "%22, "
+    + "%22req.http.Accept-Encoding%22: %22" + json.escape(req.http.Accept-Encoding) + "%22, "
+    + "%22req.http.Accept-Encoding%22: %22" + json.escape(req.http.Accept-Encoding) + "%22, "
+    + "%22req.http.Accept-Language%22: %22" + json.escape(req.http.Accept-Language) + "%22, "
+    + "%22req.http.Accept%22: %22" + json.escape(req.http.Accept) + "%22, "
+    + "%22req.http.Fastly-FF%22: %22" + json.escape(req.http.Fastly-FF) + "%22, "
+    + "%22req.http.Fastly-SSL%22: %22" + json.escape(req.http.Fastly-SSL) + "%22, "
+    + "%22req.http.host%22: %22" + json.escape(req.http.host) + "%22, "
+    + "%22req.http.Referer%22: %22" + json.escape(req.http.Referer) + "%22, "
+    + "%22req.http.User-Agent%22: %22" + json.escape(req.http.User-Agent) + "%22, "
+    + "%22req.http.Viewport-Width%22: %22" + json.escape(req.http.Viewport-Width) + "%22, "
+    + "%22req.http.X-Action-Root%22: %22" + json.escape(req.http.X-Action-Root) + "%22, "
+    + "%22req.http.X-Allow%22: %22" + json.escape(req.http.X-Allow) + "%22, "
+    + "%22req.http.X-Backend-Name%22: %22" + json.escape(req.http.X-Backend-Name) + "%22, "
+    + "%22req.http.X-CDN-Request-ID%22: %22" + json.escape(req.http.X-CDN-Request-ID) + "%22, "
+    + "%22req.http.X-Debug%22: %22" + json.escape(req.http.X-Debug) + "%22, "
+    + "%22req.http.X-Deny%22: %22" + json.escape(req.http.X-Deny) + "%22, "
+    + "%22req.http.X-Dirname%22: %22" + json.escape(req.http.X-Dirname) + "%22, "
+    + "%22req.http.X-Embed%22: %22" + json.escape(req.http.X-Embed) + "%22, "
+    + "%22req.http.X-Encoded-Params%22: %22" + json.escape(req.http.X-Encoded-Params) + "%22, "
+    + "%22req.http.X-ESI%22: %22" + json.escape(req.http.X-ESI) + "%22, "
+    + "%22req.http.X-GitHub-Static-Owner%22: %22" + json.escape(req.http.X-GitHub-Static-Owner) + "%22, "
+    + "%22req.http.X-GitHub-Static-Ref%22: %22" + json.escape(req.http.X-GitHub-Static-Ref) + "%22, "
+    + "%22req.http.X-GitHub-Static-Repo%22: %22" + json.escape(req.http.X-GitHub-Static-Repo) + "%22, "
+    + "%22req.http.X-Host%22: %22" + json.escape(req.http.X-Host) + "%22, "
+    + "%22req.http.X-Index%22: %22" + json.escape(req.http.X-Index) + "%22, "
+    + "%22req.http.X-Orig-host%22: %22" + json.escape(req.http.X-Orig-host) + "%22, "
+    + "%22req.http.X-Orig-URL%22: %22" + json.escape(req.http.X-Orig-URL) + "%22, "
+    + "%22req.http.X-Owner%22: %22" + json.escape(req.http.X-Owner) + "%22, "
+    + "%22req.http.X-Ref%22: %22" + json.escape(req.http.X-Ref) + "%22, "
+    + "%22req.http.X-Repo%22: %22" + json.escape(req.http.X-Repo) + "%22, "
+    + "%22req.http.X-Static%22: %22" + json.escape(req.http.X-Static) + "%22, "
+    + "%22req.http.X-Strain%22: %22" + json.escape(req.http.X-Strain) + "%22, "
+    + "%22req.http.X-Trace%22: %22" + json.escape(req.http.X-Trace) + "%22, "
+    + "%22req.http.X-URL%22: %22" + json.escape(req.http.X-URL) + "%22, "
+    + "%22req.request%22: %22" + json.escape(req.request) + "%22, "
+    + "%22req.restarts%22: %22" + json.escape(req.restarts) + "%22, "
+    + "%22req.topurl%22: %22" + json.escape(req.topurl) + "%22, "
+    + "%22req.url.qs%22: %22" + json.escape(req.url.qs) + "%22, "
+    + "%22req.url%22: %22" + json.escape(req.url) + "%22, "
+    + "%22resp.http.Content-Type%22: %22" + json.escape(resp.http.Content-Type) + "%22, "
+    + "%22resp.http.Via%22: %22" + json.escape(resp.http.Via) + "%22, "
+    + "%22resp.http.X-Cache-Hits%22: %22" + json.escape(resp.http.X-Cache-Hits) + "%22, "
+    + "%22resp.http.X-Cache%22: %22" + json.escape(resp.http.X-Cache) + "%22, "
+    + "%22resp.http.X-Content-Type%22: %22" + json.escape(resp.http.X-Content-Type) + "%22, "
+    + "%22resp.http.X-Fastly-Request-Id%22: %22" + json.escape(resp.http.X-Fastly-Request-Id) + "%22, "
+    + "%22resp.http.X-GitHub-Request-Id%22: %22" + json.escape(resp.http.X-GitHub-Request-Id) + "%22, "
+    + "%22resp.http.X-GW-Cache%22: %22" + json.escape(resp.http.X-GW-Cache) + "%22, "
+    + "%22resp.http.X-host%22: %22" + json.escape(resp.http.X-host) + "%22, "
+    + "%22resp.http.x-openwhisk-activation-id%22: %22" + json.escape(resp.http.x-openwhisk-activation-id) + "%22, "
+    + "%22resp.http.X-Request-Id%22: %22" + json.escape(resp.http.X-Request-Id) + "%22, "
+    + "%22resp.http.X-Version%22: %22" + json.escape(resp.http.X-Version) + "%22, "
+    + "%22resp.status%22: %22" + json.escape(resp.status) + "%22, "
+    + "%22server.datacenter%22: %22" + json.escape(server.datacenter) + "%22, "
+    + "%22server.region%22: %22" + json.escape(server.region) + "%22, "
+    + "%22time.elapsed.usec%22: %22" + json.escape(time.elapsed.usec) + "%22, "
+    + "%22time.end.usec%22: %22" + json.escape(time.end.usec) + "%22, "
+    + "%22time.start.iso8601%22: %22" + json.escape(strftime("%25F %25T", time.start)) + "%22, "
+    + "%22time.start.usec%22: %22" + json.escape(time.start.usec) + "%22, "
+    + "%22vcl.sub%22: %22" + json.escape("deliver") + "%22"
+    + "}";
+}
+
+sub hlx_log_recv_json {
+  log {"syslog 3l2MjGcHgWw5NUJz7OKYH3 Azure Test :: "} "{" 
+    + "%22client.geo.city%22: %22" + json.escape(client.geo.city.utf8) + "%22,"
+    + "%22client.as.name%22: %22" + json.escape(client.as.name) + "%22,"
+    + "%22client.geo.conn_speed%22: %22" + json.escape(client.geo.conn_speed) + "%22,"
+    + "%22client.geo.continent_code%22: %22" + json.escape(client.geo.continent_code) + "%22,"
+    + "%22client.geo.country_code%22: %22" + json.escape(client.geo.country_code) + "%22,"
+    + "%22client.geo.gmt_offset%22: %22" + json.escape(client.geo.gmt_offset) + "%22,"
+    + "%22client.geo.latitude%22: %22" + json.escape(client.geo.latitude) + "%22,"
+    + "%22client.geo.longitude%22: %22" + json.escape(client.geo.longitude) + "%22,"
+    + "%22client.geo.metro_code%22: %22" + json.escape(client.geo.metro_code) + "%22,"
+    + "%22client.geo.postal_code%22: %22" + json.escape(client.geo.postal_code) + "%22,"
+    + "%22client.geo.region%22: %22" + json.escape(client.geo.region) + "%22,"
+    + "%22client.ip.hashed%22: %22" + json.escape(digest.hash_sha1(client.ip)) + "%22,"
+    + "%22client.ip.masked%22: %22" + json.escape(regsub(client.ip, "(([\d]+\.)+)([\d]+)", "\1xxx")) + "%22,"
+    + "%22client.requests%22: %22" + json.escape(client.requests) + "%22,"
+    + "%22fastly_info.state%22: %22" + json.escape(fastly_info.state) + "%22,"
+    + "%22recv%22: %22" + json.escape("recv") + "%22,"
+    + "%22req.http.Fastly-FF%22: %22" + json.escape(req.http.Fastly-FF) + "%22,"
+    + "%22req.http.Fastly-SSL%22: %22" + json.escape(req.http.Fastly-SSL) + "%22,"
+    + "%22req.http.host%22: %22" + json.escape(req.http.host) + "%22,"
+    + "%22req.http.X-Action-Root%22: %22" + json.escape(req.http.X-Action-Root) + "%22,"
+    + "%22req.http.X-Allow%22: %22" + json.escape(req.http.X-Allow) + "%22,"
+    + "%22req.http.X-Backend-Name%22: %22" + json.escape(req.http.X-Backend-Name) + "%22,"
+    + "%22req.http.X-CDN-Request-ID%22: %22" + json.escape(req.http.X-CDN-Request-ID) + "%22,"
+    + "%22req.http.X-Debug%22: %22" + json.escape(req.http.X-Debug) + "%22,"
+    + "%22req.http.X-Deny%22: %22" + json.escape(req.http.X-Deny) + "%22,"
+    + "%22req.http.X-Dirname%22: %22" + json.escape(req.http.X-Dirname) + "%22,"
+    + "%22req.http.X-Embed%22: %22" + json.escape(req.http.X-Embed) + "%22,"
+    + "%22req.http.X-Encoded-Params%22: %22" + json.escape(req.http.X-Encoded-Params) + "%22,"
+    + "%22req.http.X-ESI%22: %22" + json.escape(req.http.X-ESI) + "%22,"
+    + "%22req.http.X-GitHub-Static-Owner%22: %22" + json.escape(req.http.X-GitHub-Static-Owner) + "%22,"
+    + "%22req.http.X-GitHub-Static-Ref%22: %22" + json.escape(req.http.X-GitHub-Static-Ref) + "%22,"
+    + "%22req.http.X-GitHub-Static-Repo%22: %22" + json.escape(req.http.X-GitHub-Static-Repo) + "%22,"
+    + "%22req.http.X-Host%22: %22" + json.escape(req.http.X-Host) + "%22,"
+    + "%22req.http.X-Index%22: %22" + json.escape(req.http.X-Index) + "%22,"
+    + "%22req.http.X-Orig-host%22: %22" + json.escape(req.http.X-Orig-host) + "%22,"
+    + "%22req.http.X-Orig-URL%22: %22" + json.escape(req.http.X-Orig-URL) + "%22,"
+    + "%22req.http.X-Owner%22: %22" + json.escape(req.http.X-Owner) + "%22,"
+    + "%22req.http.X-Ref%22: %22" + json.escape(req.http.X-Ref) + "%22,"
+    + "%22req.http.X-Repo%22: %22" + json.escape(req.http.X-Repo) + "%22,"
+    + "%22req.http.X-Static%22: %22" + json.escape(req.http.X-Static) + "%22,"
+    + "%22req.http.X-Strain%22: %22" + json.escape(req.http.X-Strain) + "%22,"
+    + "%22req.http.X-URL%22: %22" + json.escape(req.http.X-URL) + "%22,"
+    + "%22req.restarts%22: %22" + json.escape(req.restarts) + "%22,"
+    + "%22req.topurl%22: %22" + json.escape(req.topurl) + "%22,"
+    + "%22req.url.qs%22: %22" + json.escape(req.url.qs) + "%22,"
+    + "%22req.url%22: %22" + json.escape(req.url) + "%22,"
+    + "%22server.datacenter%22: %22" + json.escape(server.datacenter) + "%22,"
+    + "%22server.region%22: %22" + json.escape(server.region) + "%22,"
+    + "%22time.start.iso8601%22: %22" + json.escape(strftime("%25F %25T", time.start)) + "%22,"
+    + "%22time.start.usec%22: %22" + json.escape(time.start.usec) + "%22,"
+    + "%22vcl.sub%22: %22" + json.escape("recv") + "%22"
+    + "}";
 }
 
 sub vcl_log {
 #FASTLY log
-
-  call hlx_log2;
 }

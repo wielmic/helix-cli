@@ -886,7 +886,7 @@ sub hlx_log_deliver_json {
     + "%22time_end_usec%22: %22" + json.escape(time.end.usec) + "%22, "
     + "%22time_start_iso8601%22: %22" + json.escape(strftime("%25F %25T", time.start)) + "%22, "
     + "%22time_start_usec%22: %22" + json.escape(time.start.usec) + "%22, "
-    + "%22vcl_sub%22: %22" + json.escape("deliver") + "%22",
+    + "%22vcl_sub%22: %22" + json.escape("deliver") + "%22,"
     + "%22service_config%22: %22" + json.escape("3l2MjGcHgWw5NUJz7OKYH") + "%22"
     + "}";
 
@@ -947,7 +947,7 @@ sub hlx_log_recv_json {
     + "%22server_region%22: %22" + json.escape(server.region) + "%22,"
     + "%22time_start_iso8601%22: %22" + json.escape(strftime("%25F %25T", time.start)) + "%22,"
     + "%22time_start_usec%22: %22" + json.escape(time.start.usec) + "%22,"
-    + "%22vcl_sub%22: %22" + json.escape("recv") + "%22",
+    + "%22vcl_sub%22: %22" + json.escape("recv") + "%22,"
     + "%22service_config%22: %22" + json.escape("3l2MjGcHgWw5NUJz7OKYH") + "%22"
     + "}";
   log {"syslog 3l2MjGcHgWw5NUJz7OKYH3 BigQuery :: "} var.log;

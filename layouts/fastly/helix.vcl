@@ -511,7 +511,7 @@ sub vcl_recv {
   call hlx_strain;
 
   # Log
-  call hlx_log_recv_json;
+  # call hlx_log_recv_json;
 
   # block bad requests – needs current strain and unchanged req.url
   call hlx_block_recv;
@@ -740,7 +740,7 @@ sub vcl_deliver {
   }
 
   # log what we are delivering
-  call hlx_log_deliver_json;
+  # call hlx_log_deliver_json;
 
   if (!req.http.X-Debug) {
     # Unless we are debugging, shut up chatty headers
@@ -1001,7 +1001,7 @@ sub vcl_log {
     + "%22server_region%22: %22" + json.escape(server.region) + "%22,"
     + "%22time_start_iso8601%22: %22" + json.escape(strftime("%25F %25T", time.start)) + "%22,"
     + "%22time_start_usec%22: %22" + json.escape(time.start.usec) + "%22,"
-    + "%22vcl_sub%22: %22" + json.escape("log") + "%22,"
+    + "%22vcl_sub%22: %22" + json.escape("log") + "-" + json.escape(req.backend.is_shield) + "%22,"
     + "%22service_config%22: %22" + json.escape("3l2MjGcHgWw5NUJz7OKYH") + "%22"
     + "}";
   log {"syslog 3l2MjGcHgWw5NUJz7OKYH3 BigQuery :: "} var.log;

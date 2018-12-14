@@ -951,59 +951,66 @@ sub vcl_log {
 #FASTLY log
   declare local var.log STRING;
   set var.log = "{" 
-    + "%22client_geo_city%22: %22" + json.escape(client.geo.city.utf8) + "%22,"
-    + "%22client_as_name%22: %22" + json.escape(client.as.name) + "%22,"
-    + "%22client_geo_conn_speed%22: %22" + json.escape(client.geo.conn_speed) + "%22,"
-    + "%22client_geo_continent_code%22: %22" + json.escape(client.geo.continent_code) + "%22,"
-    + "%22client_geo_country_code%22: %22" + json.escape(client.geo.country_code) + "%22,"
-    + "%22client_geo_gmt_offset%22: %22" + json.escape(client.geo.gmt_offset) + "%22,"
-    + "%22client_geo_latitude%22: %22" + json.escape(client.geo.latitude) + "%22,"
-    + "%22client_geo_longitude%22: %22" + json.escape(client.geo.longitude) + "%22,"
-    + "%22client_geo_metro_code%22: %22" + json.escape(client.geo.metro_code) + "%22,"
-    + "%22client_geo_postal_code%22: %22" + json.escape(client.geo.postal_code) + "%22,"
-    + "%22client_geo_region%22: %22" + json.escape(client.geo.region) + "%22,"
-    + "%22client_ip_hashed%22: %22" + json.escape(digest.hash_sha1(client.ip)) + "%22,"
-    + "%22client_ip_masked%22: %22" + json.escape(regsub(client.ip, "(([\d]+\.)+)([\d]+)", "\1xxx")) + "%22,"
-    + "%22client_requests%22: %22" + json.escape(client.requests) + "%22,"
-    + "%22fastly_info_state%22: %22" + json.escape(fastly_info.state) + "%22,"
-    + "%22recv%22: %22" + json.escape("recv") + "%22,"
-    + "%22req_http_Fastly_FF%22: %22" + json.escape(req.http.Fastly-FF) + "%22,"
-    + "%22req_http_Fastly_SSL%22: %22" + json.escape(req.http.Fastly-SSL) + "%22,"
-    + "%22req_http_host%22: %22" + json.escape(req.http.host) + "%22,"
-    + "%22req_http_X-Action_Root%22: %22" + json.escape(req.http.X-Action-Root) + "%22,"
-    + "%22req_http_X_Allow%22: %22" + json.escape(req.http.X-Allow) + "%22,"
-    + "%22req_http_X-Backend_Name%22: %22" + json.escape(req.http.X-Backend-Name) + "%22,"
-    + "%22req_http_X-CDN-Request_ID%22: %22" + json.escape(req.http.X-CDN-Request-ID) + "%22,"
-    + "%22req_http_X_Debug%22: %22" + json.escape(req.http.X-Debug) + "%22,"
-    + "%22req_http_X_Deny%22: %22" + json.escape(req.http.X-Deny) + "%22,"
-    + "%22req_http_X_Dirname%22: %22" + json.escape(req.http.X-Dirname) + "%22,"
-    + "%22req_http_X_Embed%22: %22" + json.escape(req.http.X-Embed) + "%22,"
-    + "%22req_http_X-Encoded_Params%22: %22" + json.escape(req.http.X-Encoded-Params) + "%22,"
-    + "%22req_http_X_ESI%22: %22" + json.escape(req.http.X-ESI) + "%22,"
-    + "%22req_http_X-GitHub-Static_Owner%22: %22" + json.escape(req.http.X-GitHub-Static-Owner) + "%22,"
-    + "%22req_http_X-GitHub-Static_Ref%22: %22" + json.escape(req.http.X-GitHub-Static-Ref) + "%22,"
-    + "%22req_http_X-GitHub-Static_Repo%22: %22" + json.escape(req.http.X-GitHub-Static-Repo) + "%22,"
-    + "%22req_http_X_Host%22: %22" + json.escape(req.http.X-Host) + "%22,"
-    + "%22req_http_X_Index%22: %22" + json.escape(req.http.X-Index) + "%22,"
-    + "%22req_http_X-Orig_host%22: %22" + json.escape(req.http.X-Orig-Host) + json.escape(req.http.Fastly-Orig-Host) + "%22,"
-    + "%22req_http_X-Orig_URL%22: %22" + json.escape(req.http.X-Orig-URL) + "%22,"
-    + "%22req_http_X_Owner%22: %22" + json.escape(req.http.X-Owner) + "%22,"
-    + "%22req_http_X_Ref%22: %22" + json.escape(req.http.X-Ref) + "%22,"
-    + "%22req_http_X_Repo%22: %22" + json.escape(req.http.X-Repo) + "%22,"
-    + "%22req_http_X_Static%22: %22" + json.escape(req.http.X-Static) + "%22,"
-    + "%22req_http_X_Strain%22: %22" + json.escape(req.http.X-Strain) + "%22,"
-    + "%22req_http_X_URL%22: %22" + json.escape(req.http.X-URL) + "%22,"
-    + "%22req_restarts%22: %22" + json.escape(req.restarts) + "%22,"
-    + "%22req_topurl%22: %22" + json.escape(req.topurl) + "%22,"
-    + "%22req_url_qs%22: %22" + json.escape(req.url.qs) + "%22,"
-    + "%22req_url%22: %22" + json.escape(req.url) + "%22,"
-    + "%22server_datacenter%22: %22" + json.escape(server.datacenter) + "%22,"
-    + "%22server_region%22: %22" + json.escape(server.region) + "%22,"
-    + "%22time_start_iso8601%22: %22" + json.escape(strftime("%25F %25T", time.start)) + "%22,"
-    + "%22time_start_usec%22: %22" + json.escape(time.start.usec) + "%22,"
-    + "%22vcl_sub%22: %22" + json.escape("log") + "-" + json.escape(req.backend.is_shield) + "%22,"
+    + "%22client_geo_city%22: %22" + json.escape(client.geo.city.utf8) + "%22," // available, useful
+    + "%22client_as_name%22: %22" + json.escape(client.as.name) + "%22," // available, useful
+    + "%22client_geo_conn_speed%22: %22" + json.escape(client.geo.conn_speed) + "%22," // available, useful
+    + "%22client_geo_continent_code%22: %22" + json.escape(client.geo.continent_code) + "%22," // available, useful
+    + "%22client_geo_country_code%22: %22" + json.escape(client.geo.country_code) + "%22," // available, useful
+    + "%22client_geo_gmt_offset%22: %22" + json.escape(client.geo.gmt_offset) + "%22," // available, useful, wrong type
+    + "%22client_geo_latitude%22: %22" + json.escape(client.geo.latitude) + "%22," // available, useful, wrong type
+    + "%22client_geo_longitude%22: %22" + json.escape(client.geo.longitude) + "%22," // available, useful, wrong type
+    + "%22client_geo_metro_code%22: %22" + json.escape(client.geo.metro_code) + "%22," // available, useful
+    + "%22client_geo_postal_code%22: %22" + json.escape(client.geo.postal_code) + "%22," // available, useful
+    + "%22client_geo_region%22: %22" + json.escape(client.geo.region) + "%22," // available, useful
+    + "%22client_ip_hashed%22: %22" + json.escape(digest.hash_sha1(client.ip)) + "%22," // available, useful
+    + "%22client_ip_masked%22: %22" + json.escape(regsub(client.ip, "(([\d]+\.)+)([\d]+)", "\1xxx")) + "%22," // available, useful
+    + "%22client_requests%22: %22" + json.escape(client.requests) + "%22," // available, questionable
+    + "%22fastly_info_state%22: %22" + json.escape(fastly_info.state) + "%22," // available, useful
+    + "%22req_http_Fastly_FF%22: %22" + json.escape(req.http.Fastly-FF) + "%22," // missing, useless
+    + "%22req_http_Fastly_SSL%22: %22" + json.escape(req.http.Fastly-SSL) + "%22," // available, useless
+    + "%22req_http_host%22: %22" + json.escape(req.http.host) + "%22," // available, inconsistent (sometimes backend, sometimes original)
+    + "%22req_http_X-Action_Root%22: %22" + json.escape(req.http.X-Action-Root) + "%22," // missing, useful
+    + "%22req_http_X_Allow%22: %22" + json.escape(req.http.X-Allow) + "%22," // missing, useless
+    + "%22req_http_X-Backend_Name%22: %22" + json.escape(req.http.X-Backend-Name) + "%22," // missing
+    + "%22req_http_X-CDN-Request_ID%22: %22" + json.escape(req.http.X-CDN-Request-ID) + "%22," // missing, useful
+    + "%22req_http_X_Debug%22: %22" + json.escape(req.http.X-Debug) + "%22," // available, questionable
+    + "%22req_http_X_Deny%22: %22" + json.escape(req.http.X-Deny) + "%22," // available, questionable
+    + "%22req_http_X_Dirname%22: %22" + json.escape(req.http.X-Dirname) + "%22," // available, useful
+    + "%22req_http_X_Embed%22: %22" + json.escape(req.http.X-Embed) + "%22," // available, useless
+    + "%22req_http_X-Encoded_Params%22: %22" + json.escape(req.http.X-Encoded-Params) + "%22," // missing, useful
+    + "%22req_http_X_ESI%22: %22" + json.escape(req.http.X-ESI) + "%22," // available, useful (duplicative)
+    + "%22req_http_X-GitHub-Static_Owner%22: %22" + json.escape(req.http.X-GitHub-Static-Owner) + "%22," // missing, useless
+    + "%22req_http_X-GitHub-Static_Ref%22: %22" + json.escape(req.http.X-GitHub-Static-Ref) + "%22," // missing, useless
+    + "%22req_http_X-GitHub-Static_Repo%22: %22" + json.escape(req.http.X-GitHub-Static-Repo) + "%22," // missing, useless
+    + "%22req_http_X_Host%22: %22" + json.escape(req.http.X-Host) + "%22," // available, sometimes empty
+    + "%22req_http_X_Index%22: %22" + json.escape(req.http.X-Index) + "%22," // available, sometimes empty, useless
+    + "%22req_http_X-Orig_host%22: %22" + json.escape(req.http.X-Orig-Host) + json.escape(req.http.Fastly-Orig-Host) + "%22," // missing, USEFUL
+    + "%22req_http_X-Orig_URL%22: %22" + json.escape(req.http.X-Orig-URL) + "%22," // missing, USEFUL
+    + "%22req_http_X_Owner%22: %22" + json.escape(req.http.X-Owner) + "%22," // available, useful
+    + "%22req_http_X_Ref%22: %22" + json.escape(req.http.X-Ref) + "%22," // available, useful
+    + "%22req_http_X_Repo%22: %22" + json.escape(req.http.X-Repo) + "%22," // available, useful
+    + "%22req_http_X_Static%22: %22" + json.escape(req.http.X-Static) + "%22," // available, useful
+    + "%22req_http_X_Strain%22: %22" + json.escape(req.http.X-Strain) + "%22," // available, useful
+    + "%22req_http_X_URL%22: %22" + json.escape(req.http.X-URL) + "%22," // most often available, sometimes better with req.url
+    + "%22req_restarts%22: %22" + json.escape(req.restarts) + "%22," // missing, useless
+    + "%22req_topurl%22: %22" + json.escape(req.topurl) + "%22," // missing, useful (available from recv and deliver)
+    + "%22req_url_qs%22: %22" + json.escape(req.url.qs) + "%22," // available, but not the original QS
+    + "%22req_url%22: %22" + json.escape(req.url) + "%22," // available, modified
+    + "%22server_datacenter%22: %22" + json.escape(server.datacenter) + "%22," // available, useful
+    + "%22server_region%22: %22" + json.escape(server.region) + "%22," // available, useful
+    + "%22time_start_iso8601%22: %22" + json.escape(strftime("%25F %25T", time.start)) + "%22," // available, useful
+    + "%22time_start_usec%22: %22" + json.escape(time.start.usec) + "%22," // available, useful
+    + "%22vcl_sub%22: %22" + json.escape("log") + "-" + json.escape(req.backend.is_shield) + "%22," // available, useful
     + "%22service_config%22: %22" + json.escape("3l2MjGcHgWw5NUJz7OKYH") + "%22"
+    + "%22time_elapsed_usec%22: %22" + json.escape(time.elapsed.usec) + "%22"
+    + "%22time_end_usec%22: %22" + json.escape(time.end.usec) + "%22"
+
+    + "%22resp_http_x_openwhisk_activation_id%22: %22" + json.escape(resp.http.x-openwhisk-activation-id) + "%22"
+    + "%22resp_http_X_Version%22: %22" + json.escape(req.http.X-Version) + " " + json.escape(resp.http.X-Version) + "%22"
+    + "%22resp_http_Content_Type%22: %22" + json.escape(resp.http.Content-Type) + "%22"
     + "}";
+
+    // missing: time_elapsed_usec, time_end_usec, resp_http_x_openwhisk_activation_id, resp_http_X_Version, resp_http_X_host, resp_http_X_Request_Id, resp_http_X_GitHub_Request_Id, resp_http_X_Content_Type, resp_http_X_Cache_Hits, resp_http_Content_Type
   log {"syslog 3l2MjGcHgWw5NUJz7OKYH3 BigQuery :: "} var.log;
   log {"syslog 3l2MjGcHgWw5NUJz7OKYH3 Azure Test :: "} var.log;
 }
